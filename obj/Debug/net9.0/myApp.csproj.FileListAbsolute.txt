@@ -12,3 +12,4 @@
 /Users/andrejpetrov/Desktop/myApp/obj/Debug/net9.0/myApp.pdb
 /Users/andrejpetrov/Desktop/myApp/obj/Debug/net9.0/myApp.genruntimeconfig.cache
 /Users/andrejpetrov/Desktop/myApp/obj/Debug/net9.0/ref/myApp.dll
+/Users/andrejpetrov/Desktop/myApp/obj/Debug/net9.0/myApp.sourcelink.json
