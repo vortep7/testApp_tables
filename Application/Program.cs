@@ -1,10 +1,31 @@
-﻿using System;
+﻿using Spectre.Console;
+using System;
 
-
-public class Program
+class Program
 {
-    public static void Main()
+    static void Main(string[] args)
     {
-        Console.WriteLine("Hiууууа");
+        var view = new DocumentView();
+
+        while (true)
+        {
+            var action = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("Что вы хотите сделать?")
+                    .AddChoices("Добавить новый документ", "Просмотр и редактирование документа", "Выход"));
+
+            if (action == "Добавить новый документ")
+            {
+                view.AddNewDocument();
+            }
+            else if (action == "Просмотр и редактирование документа")
+            {
+                view.ManageDocuments();
+            }
+            else
+            {
+                break;
+            }
+        }
     }
 }
