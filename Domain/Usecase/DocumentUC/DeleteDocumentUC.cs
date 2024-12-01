@@ -1,26 +1,28 @@
+
+
+using Npgsql;
+
 public class DeleteDocumentUseCase
 {
-    private readonly DocumentRepository _documentRepository;
-    private readonly SpecificationRepository _specificationRepository;
+    private readonly PostgresDb _db;
 
-    public DeleteDocumentUseCase(DocumentRepository documentRepository, SpecificationRepository specificationRepository){
-        _documentRepository = documentRepository;
-        _specificationRepository = specificationRepository;
+    public DeleteDocumentUseCase(PostgresDb db)
+    {
+        _db = db;
     }
+    
+    public async Task DeleteDocumentAsync(int id)
+    {
+        string deleteQuery = @"
+            DELETE FROM master WHERE id = @id;
+        ";
 
-    public void Execute(int documentId){
-        var document = _documentRepository.GetById(documentId);
-        if (document == null)
-        {
-            throw new InvalidOperationException("Документ не найден.");
-        }
+        using var connection = new NpgsqlConnection(_db.ConnectionString);
+        await connection.OpenAsync();
 
-        var specifications = _specificationRepository.GetByDocumentId(documentId);
-        foreach (var specification in specifications)
-        {
-            _specificationRepository.Delete(specification.Id);
-        }
+        using var command = new NpgsqlCommand(deleteQuery, connection);
+        command.Parameters.AddWithValue("id", id);
 
-        _documentRepository.Delete(documentId);
+        await command.ExecuteNonQueryAsync();
     }
 }

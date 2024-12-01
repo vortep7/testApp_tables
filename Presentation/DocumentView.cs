@@ -2,16 +2,27 @@ using Spectre.Console;
 using System;
 using System.Collections.Generic;
 
-public class DocumentView
-{
-    // Данные для документов
-    private List<Document> documents = new List<Document>
-    {
-        new Document { Id = 1, Number = "123", Date = "01.01.2024", Amount = 1000, Note = "Примечание 1" },
-        new Document { Id = 2, Number = "124", Date = "02.01.2024", Amount = 2000, Note = "Примечание 2" }
-    };
+public class DocumentView {
 
-    // Данные для спецификаций
+    private readonly ViewModel vm; 
+    private readonly List<Document> documents;
+
+    public DocumentView(PostgresDb db)
+    {
+        if (db == null)
+        {
+            throw new ArgumentNullException(nameof(db), "PostgresDb instance cannot be null.");
+        }
+
+        vm = new ViewModel(db);
+
+        documents = new List<Document>
+        {
+            new Document { Id = 1, Number = "123", Date = "01.01.2024", Amount = 1000, Note = "Примечание 1" },
+            new Document { Id = 2, Number = "124", Date = "02.01.2024", Amount = 2000, Note = "Примечание 2" }
+        };
+    }
+
     private List<Specification> specifications = new List<Specification>
     {
         new Specification { DocumentId = 1, Name = "Спецификация 1", Amount = 300 },
@@ -19,51 +30,49 @@ public class DocumentView
         new Specification { DocumentId = 2, Name = "Спецификация 1", Amount = 1500 }
     };
 
-    // Метод для добавления нового документа
-        // Метод для добавления нового документа
-    public void AddNewDocument()
+    public async Task AddNewDocument()
     {
-    // Создаем таблицу для ввода данных документа
         var documentTable = new Table();
         documentTable.AddColumn("Поле");
         documentTable.AddColumn("Значение");
 
-    // Заполняем таблицу данными
-        var documentId = documents.Count + 1; // Новый ID для документа
+        var documentId = documents.Count + 1;
         string number = AnsiConsole.Ask<string>("Введите номер документа:");
-        string date = AnsiConsole.Ask<string>("Введите дату документа:");
+        string date = AnsiConsole.Ask<string>("Введите дату документа (в формате YYYY-MM-DD):");
         string note = AnsiConsole.Ask<string>("Введите примечание документа:");
-        int amount = AnsiConsole.Ask<int>("Введите сумму документа:");  // Новый запрос для суммы
+        int amount = AnsiConsole.Ask<int>("Введите сумму документа:");  
 
-    // Вставляем данные в таблицу
         documentTable.AddRow("Номер", number);
         documentTable.AddRow("Дата", date);
         documentTable.AddRow("Примечание", note);
-        documentTable.AddRow("Сумма", amount.ToString());  // Добавление суммы в таблицу
+        documentTable.AddRow("Сумма", amount.ToString()); 
 
-    // Отображаем таблицу
-    AnsiConsole.Render(documentTable);
+        AnsiConsole.Render(documentTable);
 
-    // Сохраняем новый документ
-    var newDocument = new Document
-    {
-        Id = documentId,
-        Number = number,
-        Date = date,
-        Amount = amount, // Сохраняем введенную сумму
-        Note = note
-    };
+        try
+        {
+            await vm.addDocument.AddDocumentAsync(number, amount, note);
+            AnsiConsole.MarkupLine("[green]Документ успешно добавлен в базу данных![/]");
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Ошибка при добавлении документа в базу данных: {ex.Message}[/]");
+        }
 
-    // Добавляем новый документ в список
-    documents.Add(newDocument);
+        var newDocument = new Document
+        {
+            Id = documentId,
+            Number = number,
+            Date = date,
+            Amount = amount,
+            Note = note
+        };
 
-    AnsiConsole.MarkupLine("[green]Документ успешно добавлен в мастер-таблицу![/]");
+        documents.Add(newDocument);
     }
 
-    // Метод для управления документами (редактирование, удаление)
     public void ManageDocuments()
     {
-        // Создаем таблицу Master
         var masterTable = new Table();
         masterTable.AddColumn("ID");
         masterTable.AddColumn("Номер");
@@ -71,37 +80,31 @@ public class DocumentView
         masterTable.AddColumn("Сумма");
         masterTable.AddColumn("Примечание");
 
-        // Добавляем строки в таблицу Master
         foreach (var doc in documents)
         {
             masterTable.AddRow(doc.Id.ToString(), doc.Number, doc.Date, doc.Amount.ToString(), doc.Note);
         }
 
-        // Отображаем таблицу Master
         AnsiConsole.Render(masterTable);
 
-        // Выбираем документ из Master
         int documentId = AnsiConsole.Ask<int>("Выберите ID документа для просмотра спецификаций (0 для выхода):");
         if (documentId == 0) return;
 
-        // Фильтруем спецификации по выбранному документу
         var selectedSpecifications = specifications.FindAll(s => s.DocumentId == documentId);
 
-        // Создаем таблицу Detail
         var detailTable = new Table();
+        detailTable.AddColumn("Id");
         detailTable.AddColumn("Наименование");
         detailTable.AddColumn("Сумма");
+        
 
-        // Добавляем строки в таблицу Detail
         foreach (var spec in selectedSpecifications)
         {
-            detailTable.AddRow(spec.Name, spec.Amount.ToString());
+            detailTable.AddRow(spec.Id.ToString(),spec.Name,spec.Amount.ToString());
         }
 
-        // Отображаем таблицу Detail
         AnsiConsole.Render(detailTable);
 
-        // Предлагаем пользователю выбрать действие
         var action = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
                 .Title("Что вы хотите сделать?")
@@ -109,78 +112,81 @@ public class DocumentView
 
         if (action == "Редактировать документ")
         {
-            // Редактирование документа
             EditDocument(documentId);
         }
         else if (action == "Добавить спецификацию")
         {
-            // Добавление новой спецификации
             AddSpecification(documentId);
         }
         else if (action == "Удалить документ")
         {
-            // Удаление документа
             DeleteDocument(documentId);
         }
         else if (action == "Удалить спецификацию")
         {
-            // Удаление спецификации
             DeleteSpecification(documentId);
         }
     }
 
-    // Метод для редактирования документа
     private void EditDocument(int documentId)
     {
-        var documentToEdit = documents.Find(d => d.Id == documentId);
-        documentToEdit.Number = AnsiConsole.Ask<string>("Введите новый номер документа:", documentToEdit.Number);
-        documentToEdit.Date = AnsiConsole.Ask<string>("Введите новую дату:", documentToEdit.Date);
-        documentToEdit.Amount = AnsiConsole.Ask<int>("Введите новую сумму:", documentToEdit.Amount);
-        documentToEdit.Note = AnsiConsole.Ask<string>("Введите новое примечание:", documentToEdit.Note);
+        var document = documents.Find(d => d.Id == documentId);
+        decimal newAmount = AnsiConsole.Ask<decimal>($"Введите новую сумму для документа (текущая сумма: {document.Amount}):");
+        string newRemarks = AnsiConsole.Ask<string>($"Введите новые примечания для документа (текущие примечания: {document.Note}):");
 
-        // Обновляем сумму документа
-        documentToEdit.Amount = 0;
-        foreach (var spec in specifications.FindAll(s => s.DocumentId == documentId))
-        {
-            documentToEdit.Amount += spec.Amount;
-        }
+        vm.changeDocument.UpdateDocumentAsync(documentId, newAmount, newRemarks).Wait();
+
+        document.Amount = newAmount;
+        document.Note = newRemarks;
+
+        AnsiConsole.MarkupLine("[green]Документ успешно обновлен![/]");
     }
 
-    // Метод для добавления новой спецификации
-    private void AddSpecification(int documentId)
+    private async Task AddSpecification(int documentId)
     {
         var newSpecName = AnsiConsole.Ask<string>("Введите наименование спецификации:");
-        var newSpecAmount = AnsiConsole.Ask<int>("Введите сумму спецификации:");
+        var newSpecAmount = AnsiConsole.Ask<decimal>("Введите сумму спецификации:");
+
+        int newSpecId = await vm.addSpecification.AddSpecificationAsync(documentId, newSpecName, newSpecAmount);
+
         specifications.Add(new Specification
         {
             DocumentId = documentId,
             Name = newSpecName,
-            Amount = newSpecAmount
+            Amount = newSpecAmount,
+            Id = newSpecId  
         });
 
-        // Обновляем сумму документа
         var updatedDocument = documents.Find(d => d.Id == documentId);
         updatedDocument.Amount = 0;
         foreach (var spec in specifications.FindAll(s => s.DocumentId == documentId))
         {
             updatedDocument.Amount += spec.Amount;
         }
+
+        AnsiConsole.MarkupLine("[green]Спецификация успешно добавлена![/]");
     }
 
-    // Метод для удаления документа
-    private void DeleteDocument(int documentId)
+    private async void DeleteDocument(int documentId)
     {
         var documentToDelete = documents.Find(d => d.Id == documentId);
+        if (documentToDelete != null)
+        {
         documents.Remove(documentToDelete);
 
-        // Удаляем все спецификации, связанные с документом
         specifications.RemoveAll(s => s.DocumentId == documentId);
 
+        await vm.deleteDocument.DeleteDocumentAsync(documentId);
+
         AnsiConsole.MarkupLine("[green]Документ удален успешно![/]");
+        }
+        else
+        {
+        AnsiConsole.MarkupLine("[red]Документ не найден.[/]");
+        }
     }
 
-    // Метод для удаления спецификации
-    private void DeleteSpecification(int documentId)
+    private async Task DeleteSpecification(int documentId)
     {
         var selectedSpecifications = specifications.FindAll(s => s.DocumentId == documentId);
         var specificationToDelete = AnsiConsole.Prompt(
@@ -189,9 +195,11 @@ public class DocumentView
                 .AddChoices(selectedSpecifications.ConvertAll(s => s.Name)));
 
         var specToRemove = specifications.Find(s => s.Name == specificationToDelete && s.DocumentId == documentId);
+
+        await vm.deleteSpecification.DeleteSpecificationAsync(specToRemove.Id);
+
         specifications.Remove(specToRemove);
 
-        // Пересчитываем сумму документа
         var updatedDoc = documents.Find(d => d.Id == documentId);
         updatedDoc.Amount = 0;
         foreach (var spec in specifications.FindAll(s => s.DocumentId == documentId))
@@ -200,22 +208,5 @@ public class DocumentView
         }
 
         AnsiConsole.MarkupLine("[green]Спецификация удалена успешно![/]");
-    }
-
-    // Класс для представления документа
-    public class Document
-    {
-        public int Id { get; set; }
-        public string Number { get; set; }
-        public string Date { get; set; }
-        public int Amount { get; set; }
-        public string Note { get; set; }
-    }
-
-    public class Specification
-    {
-        public int DocumentId { get; set; }
-        public string Name { get; set; }
-        public int Amount { get; set; }
     }
 }

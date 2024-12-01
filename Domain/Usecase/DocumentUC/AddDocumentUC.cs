@@ -1,29 +1,29 @@
+using Npgsql;
+
 public class AddDocumentUseCase
 {
-    private readonly DocumentRepository _documentRepository;
-    private readonly SpecificationRepository _specificationRepository;
+    private readonly PostgresDb _db;
 
-    public AddDocumentUseCase(DocumentRepository documentRepository, SpecificationRepository specificationRepository)  {
-        _documentRepository = documentRepository;
-        _specificationRepository = specificationRepository;
+    public AddDocumentUseCase(PostgresDb db)
+    {
+        _db = db;
     }
+    
+   public async Task AddDocumentAsync(string number, decimal amount, string remarks)
+    {
+        string insertQuery = @"
+            INSERT INTO master (number, amount, remarks)
+            VALUES (@number, @amount, @remarks);
+        ";
 
-    public void Execute(Document document, List<Specification> specifications)  {
-        if (!_documentRepository.IsDocumentNumberUnique(document.Number))
-        {
-            throw new InvalidOperationException("Документ с таким номером уже существует.");
-        }
+        using var connection = new NpgsqlConnection(_db.ConnectionString);
+        await connection.OpenAsync();
+        
+        using var command = new NpgsqlCommand(insertQuery, connection);
+        command.Parameters.AddWithValue("number", number);
+        command.Parameters.AddWithValue("amount", amount);
+        command.Parameters.AddWithValue("remarks", remarks);
 
-        _documentRepository.Add(document);
-
-        foreach (var specification in specifications)
-        {
-            specification.DocumentId = document.Id;
-            _specificationRepository.Add(specification);
-        }
-
-        document.RecalculateTotal();
-
-        _documentRepository.Update(document);
+        await command.ExecuteNonQueryAsync();
     }
 }

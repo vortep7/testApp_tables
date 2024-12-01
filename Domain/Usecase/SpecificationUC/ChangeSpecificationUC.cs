@@ -1,29 +1,34 @@
+using Npgsql;
+
 public class ChangeSpecificationUseCase
 {
-    private readonly SpecificationRepository _specificationRepository;
-    private readonly DocumentRepository _documentRepository;
+    private readonly PostgresDb _db;
 
-    public ChangeSpecificationUseCase(SpecificationRepository specificationRepository, DocumentRepository documentRepository)
+    public ChangeSpecificationUseCase(PostgresDb db)
     {
-        _specificationRepository = specificationRepository;
-        _documentRepository = documentRepository;
+        _db = db;
     }
 
-    public void Execute(int specificationId, string newName, double newAmount)
+    // Асинхронный метод для изменения спецификации
+    public async Task ChangeSpecificationAsync(int specificationId, string newName, decimal newAmount)
     {
-        var specification = _specificationRepository.GetById(specificationId);
-        if (specification == null)
-        {
-            throw new InvalidOperationException("Спецификация не найдена.");
-        }
+        string updateQuery = @"
+            UPDATE detail
+            SET name = @name, amount = @amount
+            WHERE id = @id;
+        ";
 
-        specification.Name = newName;
-        specification.Amount = newAmount;
+        // Открываем соединение с базой данных
+        using var connection = new NpgsqlConnection(_db.ConnectionString);
+        await connection.OpenAsync();
 
-        var document = _documentRepository.GetById(specification.DocumentId);
-        document.RecalculateTotal();
+        // Создаем команду для обновления спецификации
+        using var command = new NpgsqlCommand(updateQuery, connection);
+        command.Parameters.AddWithValue("id", specificationId);
+        command.Parameters.AddWithValue("name", newName);
+        command.Parameters.AddWithValue("amount", newAmount);
 
-        _documentRepository.Update(document);
-        _specificationRepository.Update(specification);
+        // Выполняем запрос
+        await command.ExecuteNonQueryAsync();
     }
 }

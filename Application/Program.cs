@@ -1,11 +1,26 @@
 ﻿using Spectre.Console;
 using System;
 
-class Program
+public class Program
 {
-    static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
-        var view = new DocumentView();
+        // Подключение к базе данных
+        var connectionString = "Host=localhost;Port=5432;Database=my_database;Username=my_user;Password=my_password";
+        var postgresDb = new PostgresDb(connectionString);
+        var documentRepository = new DocumentRepositoryService(postgresDb);
+
+        var app = new App(documentRepository);
+
+        await app.RunAsync();
+
+        // Запуск вьюшки, инжектим бд во вью 
+        await RunMainMenuAsync(documentRepository,postgresDb);
+    }
+
+    private static async Task RunMainMenuAsync(DocumentRepositoryService documentRepository, PostgresDb postgresDb)
+    {
+        var view = new DocumentView(postgresDb);
 
         while (true)
         {

@@ -1,27 +1,34 @@
+
+using Npgsql;
+
 public class AddSpecificationUseCase
 {
-    private readonly SpecificationRepository _specificationRepository;
-    private readonly DocumentRepository _documentRepository;
+    private readonly PostgresDb _db;
 
-    public AddSpecificationUseCase(SpecificationRepository specificationRepository, DocumentRepository documentRepository)
+    public AddSpecificationUseCase(PostgresDb db)
     {
-        _specificationRepository = specificationRepository;
-        _documentRepository = documentRepository;
+        _db = db;
+    }
+    
+    public async Task<int> AddSpecificationAsync(int masterId, string name, decimal amount)
+    {
+        string insertQuery = @"
+            INSERT INTO detail (master_id, name, amount)
+            VALUES (@master_id, @name, @amount)
+            RETURNING id;
+        ";
+
+        using var connection = new NpgsqlConnection(_db.ConnectionString);
+        await connection.OpenAsync();
+
+        using var command = new NpgsqlCommand(insertQuery, connection);
+        command.Parameters.AddWithValue("master_id", masterId);
+        command.Parameters.AddWithValue("name", name);
+        command.Parameters.AddWithValue("amount", amount);
+
+        // Получаем сгенерированный ID
+        var newId = (int)await command.ExecuteScalarAsync();
+        return newId;
     }
 
-    public void Execute(int documentId, Specification specification)
-    {
-        var document = _documentRepository.GetById(documentId);
-        if (document == null)
-        {
-            throw new InvalidOperationException("Документ не найден.");
-        }
-
-        specification.DocumentId = documentId;
-        _specificationRepository.Add(specification);
-
-        document.RecalculateTotal();
-
-        _documentRepository.Update(document);
-    }
 }

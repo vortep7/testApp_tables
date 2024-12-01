@@ -1,27 +1,27 @@
+
+using Npgsql;
+
 public class DeleteSpecificationUseCase
 {
-    private readonly SpecificationRepository _specificationRepository;
-    private readonly DocumentRepository _documentRepository;
+    private readonly PostgresDb _db;
 
-    public DeleteSpecificationUseCase(SpecificationRepository specificationRepository, DocumentRepository documentRepository)
+    public DeleteSpecificationUseCase(PostgresDb db)
     {
-        _specificationRepository = specificationRepository;
-        _documentRepository = documentRepository;
+        _db = db;
     }
-
-    public void Execute(int specificationId)
+    
+    public async Task DeleteSpecificationAsync(int id)
     {
-        var specification = _specificationRepository.GetById(specificationId);
-        if (specification == null)
-        {
-            throw new InvalidOperationException("Спецификация не найдена.");
-        }
+        string deleteQuery = @"
+            DELETE FROM detail WHERE id = @id;
+        ";
 
-        _specificationRepository.Delete(specificationId);
+        using var connection = new NpgsqlConnection(_db.ConnectionString);
+        await connection.OpenAsync();
 
-        var document = _documentRepository.GetById(specification.DocumentId);
-        document.RecalculateTotal();
+        using var command = new NpgsqlCommand(deleteQuery, connection);
+        command.Parameters.AddWithValue("id", id);
 
-        _documentRepository.Update(document);
+        await command.ExecuteNonQueryAsync();
     }
 }
