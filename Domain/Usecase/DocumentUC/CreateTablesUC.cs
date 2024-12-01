@@ -1,10 +1,10 @@
 using Npgsql;
 
-public class DocumentRepositoryService
+public class CreateTableUseCase
 {
     private readonly PostgresDb _db;
 
-    public DocumentRepositoryService(PostgresDb db)
+    public CreateTableUseCase(PostgresDb db)
     {
         _db = db;
     }

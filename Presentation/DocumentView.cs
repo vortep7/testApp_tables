@@ -18,16 +18,13 @@ public class DocumentView {
 
         documents = new List<Document>
         {
-            new Document { Id = 1, Number = "123", Date = "01.01.2024", Amount = 1000, Note = "Примечание 1" },
-            new Document { Id = 2, Number = "124", Date = "02.01.2024", Amount = 2000, Note = "Примечание 2" }
+            
         };
     }
 
     private List<Specification> specifications = new List<Specification>
     {
-        new Specification { DocumentId = 1, Name = "Спецификация 1", Amount = 300 },
-        new Specification { DocumentId = 1, Name = "Спецификация 2", Amount = 700 },
-        new Specification { DocumentId = 2, Name = "Спецификация 1", Amount = 1500 }
+      
     };
 
     public async Task AddNewDocument()

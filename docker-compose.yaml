@@ -1,0 +1,40 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .  # Строим контейнер из текущей директории
+      dockerfile: Dockerfile.app  # Если файл Dockerfile для приложения называется иначе, укажите его имя
+    container_name: my-app
+    depends_on:
+      - postgresql  # Зависимость от PostgreSQL
+    environment:
+      - DATABASE_URL=postgres://my_user:my_password@postgres:5432/my_database  # URL подключения к базе данных
+    ports:
+      - "8080:80"  # Открываем порт для внешнего доступа к приложению
+    networks:
+      - app-network
+
+  postgresql:
+    build:
+      context: .  # Строим контейнер из текущей директории
+      dockerfile: Dockerfile.db  # Если файл Dockerfile для PostgreSQL называется иначе, укажите его имя
+    container_name: postgresql
+    environment:
+      - POSTGRES_USER=my_user
+      - POSTGRES_PASSWORD=my_password
+      - POSTGRES_DB=my_database
+    volumes:
+      - ./data:/var/lib/postgresql/data  # Монтируем данные в локальную директорию
+    ports:
+      - "5432:5432"  # Открываем порт для подключения к базе данных
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "my_user", "-d", "my_database"]
+      interval: 10s
+      retries: 5
+
+networks:
+  app-network:  # Сеть для связи между контейнерами
+    driver: bridge
