@@ -26,3 +26,6 @@ public class ViewModel
         deleteSpecification = new DeleteSpecificationUseCase(db);
     }
 }
+
+
+

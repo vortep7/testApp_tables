@@ -18,13 +18,13 @@ public class DocumentView {
 
         documents = new List<Document>
         {
-            
+            //тестовые документы 
         };
     }
 
     private List<Specification> specifications = new List<Specification>
     {
-      
+        //тестовые спецификации 
     };
 
     public async Task AddNewDocument()

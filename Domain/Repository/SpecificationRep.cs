@@ -1,7 +1,7 @@
 public interface SpecificationRepository
 {
-    Specification GetById(int specificationId);
-    List<Specification> GetByDocumentId(int documentId);
+    void AddSpecification(int specificationId);
+    void DeleteSpecification(int documentId);
     void Add(Specification specification);
     void Update(Specification specification);
     void Delete(int specificationId);

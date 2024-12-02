@@ -26,7 +26,6 @@ public class AddSpecificationUseCase
         command.Parameters.AddWithValue("name", name);
         command.Parameters.AddWithValue("amount", amount);
 
-        // Получаем сгенерированный ID
         var newId = (int)await command.ExecuteScalarAsync();
         return newId;
     }

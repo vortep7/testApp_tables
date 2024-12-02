@@ -3,31 +3,31 @@ version: "3.8"
 services:
   app:
     build:
-      context: .  # Строим контейнер из текущей директории
-      dockerfile: Dockerfile.app  # Если файл Dockerfile для приложения называется иначе, укажите его имя
+      context: .  
+      dockerfile: Dockerfile.app 
     container_name: my-app
     depends_on:
-      - postgresql  # Зависимость от PostgreSQL
+      - postgresql  
     environment:
-      - DATABASE_URL=postgres://my_user:my_password@postgres:5432/my_database  # URL подключения к базе данных
+      - DATABASE_URL=postgres://my_user:my_password@postgres:5432/my_database  
     ports:
-      - "8080:80"  # Открываем порт для внешнего доступа к приложению
+      - "8080:80" 
     networks:
       - app-network
 
   postgresql:
     build:
-      context: .  # Строим контейнер из текущей директории
-      dockerfile: Dockerfile.db  # Если файл Dockerfile для PostgreSQL называется иначе, укажите его имя
+      context: .  
+      dockerfile: Dockerfile.db 
     container_name: postgresql
     environment:
       - POSTGRES_USER=my_user
       - POSTGRES_PASSWORD=my_password
       - POSTGRES_DB=my_database
     volumes:
-      - ./data:/var/lib/postgresql/data  # Монтируем данные в локальную директорию
+      - ./data:/var/lib/postgresql/data  
     ports:
-      - "5432:5432"  # Открываем порт для подключения к базе данных
+      - "5432:5432"
     networks:
       - app-network
     healthcheck:
@@ -36,5 +36,5 @@ services:
       retries: 5
 
 networks:
-  app-network:  # Сеть для связи между контейнерами
+  app-network:  
     driver: bridge
