@@ -5,7 +5,8 @@ using System.Collections.Generic;
 public class DocumentView {
 
     private readonly ViewModel vm; 
-    private readonly List<Document> documents;
+    public List<Document> documents;
+    public List<Specification> specifications;
 
     public DocumentView(PostgresDb db)
     {
@@ -16,16 +17,20 @@ public class DocumentView {
 
         vm = new ViewModel(db);
 
-        documents = new List<Document>
-        {
-            //тестовые документы 
-        };
+        InitializeDocumentsAsync(db).Wait();  
+        InitializeSpecificationsAsync(db).Wait();  
     }
 
-    private List<Specification> specifications = new List<Specification>
+    private async Task InitializeDocumentsAsync(PostgresDb db)
     {
-        //тестовые спецификации 
-    };
+        documents = await vm.GetDocumentsFromDatabaseAsync();  
+    }
+
+    private async Task InitializeSpecificationsAsync(PostgresDb db)
+    {
+        specifications = await vm.GetSpecificationsFromDatabaseAsync();  
+    }
+
 
     public async Task AddNewDocument()
     {
@@ -33,39 +38,66 @@ public class DocumentView {
         documentTable.AddColumn("Поле");
         documentTable.AddColumn("Значение");
 
-        var documentId = documents.Count + 1;
         string number = AnsiConsole.Ask<string>("Введите номер документа:");
         string date = AnsiConsole.Ask<string>("Введите дату документа (в формате YYYY-MM-DD):");
         string note = AnsiConsole.Ask<string>("Введите примечание документа:");
-        int amount = AnsiConsole.Ask<int>("Введите сумму документа:");  
+        int amount = AnsiConsole.Ask<int>("Введите сумму документа:");
+
+        // Проверка уникальности номера
+        try
+        {
+            bool isNumberUnique = await vm.addDocument.IsNumberUniqueAsync(number); // Метод для проверки
+            if (!isNumberUnique)
+            {
+                AnsiConsole.MarkupLine("[red]Ошибка: Номер документа должен быть уникальным![/]");
+                
+                // Сохранение ошибки в базу данных логов
+                await vm.logErrorUseCase.LogErrorAsync("Уникальность номера документа", 
+                    $"Номер '{number}' уже существует в базе данных.", DateTime.Now);
+
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Ошибка при проверке уникальности номера: {ex.Message}[/]");
+            
+            await vm.logErrorUseCase.LogErrorAsync("Проверка уникальности номера", ex.Message, DateTime.Now);
+
+            return;
+        }
 
         documentTable.AddRow("Номер", number);
         documentTable.AddRow("Дата", date);
         documentTable.AddRow("Примечание", note);
-        documentTable.AddRow("Сумма", amount.ToString()); 
+        documentTable.AddRow("Сумма", amount.ToString());
 
         AnsiConsole.Render(documentTable);
 
         try
         {
+            // Вставка в базу данных
             await vm.addDocument.AddDocumentAsync(number, amount, note);
             AnsiConsole.MarkupLine("[green]Документ успешно добавлен в базу данных![/]");
+            
+            // Добавляем документ в локальный список только если вставка успешна
+            var documentId = documents.Count + 1;
+            var newDocument = new Document
+            {
+                Id = documentId,
+                Number = number,
+                Date = date,
+                Amount = amount,
+                Note = note
+            };
+            documents.Add(newDocument);
         }
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]Ошибка при добавлении документа в базу данных: {ex.Message}[/]");
+
+            await vm.logErrorUseCase.LogErrorAsync("Добавление документа", ex.Message, DateTime.Now);
         }
-
-        var newDocument = new Document
-        {
-            Id = documentId,
-            Number = number,
-            Date = date,
-            Amount = amount,
-            Note = note
-        };
-
-        documents.Add(newDocument);
     }
 
     public void ManageDocuments()
@@ -128,15 +160,28 @@ public class DocumentView {
     private void EditDocument(int documentId)
     {
         var document = documents.Find(d => d.Id == documentId);
+        if (document == null)
+        {
+            AnsiConsole.MarkupLine($"[red]Документ с ID {documentId} не найден![/]");
+            return;
+        }
+
         decimal newAmount = AnsiConsole.Ask<decimal>($"Введите новую сумму для документа (текущая сумма: {document.Amount}):");
         string newRemarks = AnsiConsole.Ask<string>($"Введите новые примечания для документа (текущие примечания: {document.Note}):");
 
-        vm.changeDocument.UpdateDocumentAsync(documentId, newAmount, newRemarks).Wait();
+        try
+        {
+            vm.changeDocument.UpdateDocumentAsync(documentId, newAmount, newRemarks).Wait();
 
-        document.Amount = newAmount;
-        document.Note = newRemarks;
+            document.Amount = newAmount;
+            document.Note = newRemarks;
 
-        AnsiConsole.MarkupLine("[green]Документ успешно обновлен![/]");
+            AnsiConsole.MarkupLine("[green]Документ успешно обновлен![/]");
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Ошибка при обновлении документа: {ex.Message}[/]");
+        }
     }
 
     private async Task AddSpecification(int documentId)

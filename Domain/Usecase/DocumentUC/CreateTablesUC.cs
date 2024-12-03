@@ -30,7 +30,17 @@ public class CreateTableUseCase
             );
         ";
 
+        string createLogTableQuery = @"
+            CREATE TABLE IF NOT EXISTS logs (
+                id SERIAL PRIMARY KEY,
+                error_message TEXT NOT NULL,
+                error_details TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        ";
+
         await _db.ExecuteQueryAsync(createMasterTableQuery);
         await _db.ExecuteQueryAsync(createDetailTableQuery);
+        await _db.ExecuteQueryAsync(createLogTableQuery);
     }
 }

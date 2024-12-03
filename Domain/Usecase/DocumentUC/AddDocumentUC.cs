@@ -26,4 +26,19 @@ public class AddDocumentUseCase
 
         await command.ExecuteNonQueryAsync();
     }
+
+    public async Task<bool> IsNumberUniqueAsync(string number)
+    {
+        var query = "SELECT COUNT(*) FROM master WHERE number = @number";
+        using (var connection = new NpgsqlConnection(_db.ConnectionString))
+        {
+            await connection.OpenAsync();
+            using (var command = new NpgsqlCommand(query, connection))
+            {
+                command.Parameters.AddWithValue("@number", number);
+                var count = (long)await command.ExecuteScalarAsync();
+                return count == 0;
+            }
+        }
+    }
 }
