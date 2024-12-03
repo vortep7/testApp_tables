@@ -17,6 +17,7 @@ public class DocumentView {
 
         vm = new ViewModel(db);
 
+        //надо бы отрефакторить (можем дедлокнуть)
         InitializeDocumentsAsync(db).Wait();  
         InitializeSpecificationsAsync(db).Wait();  
     }
@@ -46,7 +47,7 @@ public class DocumentView {
         // Проверка уникальности номера
         try
         {
-            bool isNumberUnique = await vm.addDocument.IsNumberUniqueAsync(number); // Метод для проверки
+            bool isNumberUnique = await vm.addDocument.IsNumberUniqueAsync(number); 
             if (!isNumberUnique)
             {
                 AnsiConsole.MarkupLine("[red]Ошибка: Номер документа должен быть уникальным![/]");
@@ -76,11 +77,9 @@ public class DocumentView {
 
         try
         {
-            // Вставка в базу данных
             await vm.addDocument.AddDocumentAsync(number, amount, note);
             AnsiConsole.MarkupLine("[green]Документ успешно добавлен в базу данных![/]");
             
-            // Добавляем документ в локальный список только если вставка успешна
             var documentId = documents.Count + 1;
             var newDocument = new Document
             {
